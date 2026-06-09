@@ -1,6 +1,6 @@
 # RCT-Reviewer 
 
-**This repository allows users to run RCT-Reviewer locally by downloading the required model files using Git Large File Storage (LFS).**
+**For the time being, This repository allows users to run RCT-Reviewer locally by downloading the required model files using Git Large File Storage (LFS).**
 
 
 **RCT-Reviewer** is a modernized, standalone version of the acclaimed [RobotReviewer](https://github.com/ijmarshall/robotreviewer) project. It is a pure-Python application designed to run locally via Streamlit, automating the extraction of PICO data and the assessment of Risk of Bias from clinical trial PDF reports.
