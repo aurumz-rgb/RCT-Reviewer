@@ -5,3 +5,6 @@ robotreviewer/data/pico/PICO_embeddings/abstracts.p filter=lfs diff=lfs merge=lf
 robotreviewer/data/pico/PICO_embeddings/interventions/weights.h5 filter=lfs diff=lfs merge=lfs -text
 robotreviewer/data/pico/PICO_embeddings/populations/weights.h5 filter=lfs diff=lfs merge=lfs -text
 robotreviewer/data/pico/PICO_embeddings/outcomes/weights.h5 filter=lfs diff=lfs merge=lfs -text
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.pickle filter=lfs diff=lfs merge=lfs -text
+*.p filter=lfs diff=lfs merge=lfs -text

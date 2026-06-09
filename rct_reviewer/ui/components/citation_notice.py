@@ -1,12 +1,4 @@
-"""
-Citation notice component for RCT-Reviewer v1.0.0
 
-Displays attribution, citation information, and funding acknowledgements
-for both the modified version and the original RobotReviewer project.
-
-Copyright (C) 2026 Vihaan Sahu
-Based on RobotReviewer by Iain Marshall, Joel Kuiper, Byron Wallace
-"""
 
 import streamlit as st
 

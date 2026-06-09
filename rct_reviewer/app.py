@@ -1,395 +1,570 @@
-"""
-RCT-Reviewer v1.0.0 - Main Streamlit Application
 
-Modernized clinical trial analysis system for automatic extraction
-of PICO data and Risk of Bias assessment.
+# Author:
+#   Vihaan Sahu <pteroisvolitans12@gmail.com>
 
-Run with: streamlit run rct_reviewer/app.py
 
-Copyright (C) 2024-2026 Vihaan Sahu
-Based on RobotReviewer by Iain Marshall, Joel Kuiper, Byron Wallace
-"""
-
-import logging
 import sys
-import time
-from typing import Any
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
 
 import streamlit as st
+import fitz  
+import time
+import io
+import logging
+import numpy as np
+from datetime import datetime
 
-from rct_reviewer import __version__
-from rct_reviewer.config import settings
-from rct_reviewer.core.models import DocumentAnalysis
-from rct_reviewer.core.pdf_parser import PDFParser
-from rct_reviewer.ml.rct_classifier import RCTClassifier
-from rct_reviewer.ml.pico_extractor import PICOExtractor
-from rct_reviewer.ml.bias_assessor import BiasAssessor
-
-
-logging.basicConfig(
-    level=getattr(logging, settings.log_level),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    stream=sys.stderr,
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
+from rct_reviewer.core.pdf_parser import PDFParser
+from rct_reviewer.core.models import DocumentAnalysis
+from rct_reviewer.ml.rct_robot import RCTRobot
+from rct_reviewer.ml.pico_robot import PICORobot
+from rct_reviewer.ml.bias_robot import BiasRobot
 
-def setup_page() -> None:
-    """Configure Streamlit page settings."""
-    st.set_page_config(
-        page_title=settings.ui.page_title,
-        page_icon=settings.ui.page_icon,
-        layout=settings.ui.layout,
-        initial_sidebar_state="expanded",
-    )
-    
 
-    st.markdown("""
-    <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #1f77b4;
-        margin-bottom: 0.5rem;
+@st.cache_resource
+def load_models():
+    return {
+        "rct": RCTRobot(),
+        "pico": PICORobot(),
+        "bias": BiasRobot()
     }
-    .sub-header {
-        font-size: 1.1rem;
-        color: #666;
-        margin-bottom: 2rem;
+
+@st.cache_resource
+def get_parser():
+    return PDFParser()
+
+
+# PICO Colors 
+PICO_COLORS = {
+    "Population": (1.0, 0.84, 0.0),      
+    "Intervention": (1.0, 0.6, 0.2),      
+    "Outcomes": (1.0, 0.5, 0.31),          
+}
+
+# Bias Domain Colors 
+BIAS_COLORS = {
+    "Random sequence generation": (1.0, 0.6, 0.6),       
+    "Allocation concealment": (1.0, 0.3, 0.3),          
+    "Blinding of participants and personnel": (0.86, 0.08, 0.24), 
+    "Blinding of outcome assessment": (0.8, 0.4, 0.0),  
+    "Incomplete outcome data": (0.8, 0.2, 0.2),        
+    "Selective reporting": (0.5, 0.0, 0.0),              
+}
+
+
+
+def create_bias_highlighted_pdf(pdf_bytes, annotations):
+    """Create PDF with ONLY Bias highlights using DISTINCT annotation styles to prevent color mixing."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    current_date = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
+    # Map domains to annotation styles
+    # 1: Highlight, 2: Underline, 3: Squiggly, 4: Manual Rect (BG), 5: Manual Outline, 6: Manual Thick Line
+    style_map = {
+        "Random sequence generation": "highlight",
+        "Allocation concealment": "underline",
+        "Blinding of participants and personnel": "squiggly",
+        "Blinding of outcome assessment": "manual_bg",
+        "Incomplete outcome data": "manual_outline",
+        "Selective reporting": "manual_thick_line",
     }
-    .stProgress > div > div > div > div {
-        background-color: #1f77b4;
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 1.5rem;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-
-def display_header() -> None:
-    """Display application header."""
-    st.markdown('<div class="main-header">🔬 RCT-Reviewer</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="sub-header">'
-        'Automatic extraction of PICO data and Risk of Bias assessment '
-        'from clinical trial reports</div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(f"Version {__version__} | Python 3.13+ | Transformer-based analysis")
-    st.divider()
-
-
-def display_sidebar() -> None:
-    """Display sidebar with settings and information."""
-    with st.sidebar:
-        st.markdown("## ⚙️ Settings")
+    
+    for page_num, page in enumerate(doc):
+        rect = page.rect
+        header_height = 95
         
-
-        st.markdown("### Analysis Options")
+       
+        header_rect = fitz.Rect(0, 0, rect.width, header_height)
+        page.draw_rect(header_rect, color=(1, 1, 1), fill=(1, 1, 1))
         
-        run_rct = st.checkbox(
-            "RCT Classification",
-            value=True,
-            help="Classify whether documents describe Randomized Controlled Trials",
+       
+        page.insert_text(
+            fitz.Point(10, 15),
+            f"Generated by RCT-Reviewer on {current_date}",
+            fontsize=10, color=(0.2, 0.2, 0.2), fontname="helv"
         )
+        page.draw_line(fitz.Point(0, 22), fitz.Point(rect.width, 22), color=(0.8, 0.8, 0.8), width=1)
         
-        run_pico = st.checkbox(
-            "PICO Extraction",
-            value=True,
-            help="Extract Population, Intervention, and Outcome information",
-        )
+        page.insert_text(fitz.Point(10, 38), "BIAS HIGHLIGHTS (Distinct Styles):", fontsize=8, color=(0.3, 0.3, 0.3), fontname="helv")
         
-        run_bias = st.checkbox(
-            "Risk of Bias",
-            value=True,
-            help="Assess Risk of Bias using Cochrane RoB 1.0 domains",
-        )
-        
-        st.divider()
-        
-
-        st.markdown("### Model Settings")
-        
-        threshold_type = st.selectbox(
-            "RCT Threshold",
-            options=["balanced", "precise", "sensitive"],
-            index=1,
-            help="balanced: balanced precision/recall\nprecise: high precision\nsensitive: high recall",
-        )
-        
-        pico_top_k = st.slider(
-            "PICO sentences per domain",
-            min_value=1,
-            max_value=10,
-            value=3,
-            help="Number of top sentences to extract for each PICO domain",
-        )
-        
-        bias_top_k = st.slider(
-            "Bias evidence sentences",
-            min_value=1,
-            max_value=10,
-            value=3,
-            help="Number of evidence sentences per bias domain",
-        )
-        
-        st.divider()
-        
-   
-        st.markdown("### PDF Parsing")
-        
-        try:
-            from rct_reviewer.core.pdf_parser import GrobidClient
-            grobid = GrobidClient()
-            grobid_available = grobid.is_available()
-        except Exception:
-            grobid_available = False
-        
-        if grobid_available:
-            st.success("✅ GROBID connected")
-        else:
-            st.warning("⚠️ GROBID not available\nUsing PyMuPDF fallback")
-            st.caption("For better results, start GROBID:\n`docker run -d -p 8070:8070 lfoppiano/grobid:latest`")
-        
-        st.divider()
+       
+        bias_legend = [
+            ("1. Random Seq", (1.0, 0.6, 0.6), "highlight"),
+            ("2. Allocation", (1.0, 0.3, 0.3), "underline"),
+            ("3. Blind-Part", (0.86, 0.08, 0.24), "squiggly"),
+            ("4. Blind-Outcome", (0.8, 0.4, 0.0), "manual_bg"),
+            ("5. Incomplete", (0.8, 0.2, 0.2), "manual_outline"),
+            ("6. Selective Rep", (0.5, 0.0, 0.0), "manual_thick_line"),
+        ]
         
 
-        if settings.ui.show_citation:
-            st.markdown("### 📝 Citation")
-            st.caption(
-                "Risk of Bias automation by RCT-Reviewer "
-                "(based on RobotReviewer by Marshall et al., 2017)"
-            )
-        
-        return {
-            "run_rct": run_rct,
-            "run_pico": run_pico,
-            "run_bias": run_bias,
-            "threshold_type": threshold_type,
-            "pico_top_k": pico_top_k,
-            "bias_top_k": bias_top_k,
-        }
-
-
-def initialize_models(options: dict[str, Any]) -> dict[str, Any]:
-    """Initialize ML models based on options."""
-    models: dict[str, Any] = {}
-    
-    if options.get("run_rct"):
-        with st.spinner("Loading RCT classifier..."):
-            try:
-                models["rct"] = RCTClassifier()
-                models["rct"].load()
-                log.info("RCT classifier loaded")
-            except Exception as e:
-                st.error(f"Failed to load RCT classifier: {e}")
-                log.error(f"RCT classifier load failed: {e}")
-    
-    if options.get("run_pico"):
-        with st.spinner("Loading PICO extractor..."):
-            try:
-                models["pico"] = PICOExtractor(top_k=options.get("pico_top_k", 3))
-                models["pico"].load()
-                log.info("PICO extractor loaded")
-            except Exception as e:
-                st.error(f"Failed to load PICO extractor: {e}")
-                log.error(f"PICO extractor load failed: {e}")
-    
-    if options.get("run_bias"):
-        with st.spinner("Loading Bias assessor..."):
-            try:
-                models["bias"] = BiasAssessor(top_k=options.get("bias_top_k", 3))
-                models["bias"].load()
-                log.info("Bias assessor loaded")
-            except Exception as e:
-                st.error(f"Failed to load Bias assessor: {e}")
-                log.error(f"Bias assessor load failed: {e}")
-    
-    return models
-
-
-def analyze_documents(
-    pdf_files: list[tuple[bytes, str]],
-    models: dict[str, Any],
-    options: dict[str, Any],
-) -> list[DocumentAnalysis]:
-    """Analyze PDF documents."""
-    results: list[DocumentAnalysis] = []
-    total = len(pdf_files)
-    
-
-    parser = PDFParser()
-    
-
-    progress_container = st.container()
-    status_container = st.container()
-    
-    with progress_container:
-        progress_bar = st.progress(0, text="Starting analysis...")
-    
-    with status_container:
-        status_text = st.empty()
-    
-    for i, (pdf_bytes, filename) in enumerate(pdf_files):
-        start_time = time.time()
-        
-  
-        progress = (i / total) * 100
-        progress_bar.progress(
-            progress / 100,
-            text=f"Processing {i + 1}/{total}: {filename}",
-        )
-        status_text.markdown(f"📄 **{filename}**")
-        
-        try:
-  
-            status_text.markdown(f"📄 **{filename}** — Parsing PDF...")
-            doc = parser.parse(pdf_bytes, filename)
+        legend_x = 10
+        legend_y = 52
+        for label, color, style in bias_legend[:3]:
+          
+            if style == "highlight":
+                box_rect = fitz.Rect(legend_x, legend_y - 6, legend_x + 15, legend_y + 6)
+                page.draw_rect(box_rect, color=color, fill=color)
+            elif style == "underline":
+                page.draw_line(fitz.Point(legend_x, legend_y + 4), fitz.Point(legend_x + 15, legend_y + 4), color=color, width=2)
+            elif style == "squiggly":
+               
+                page.draw_line(fitz.Point(legend_x, legend_y + 4), fitz.Point(legend_x + 15, legend_y + 4), color=color, width=1)
+                page.draw_line(fitz.Point(legend_x, legend_y + 2), fitz.Point(legend_x + 15, legend_y + 2), color=color, width=1)
             
-            if doc.parse_error:
-                doc.warnings.append("PDF parsing failed")
-                results.append(doc)
+            page.insert_text(fitz.Point(legend_x + 20, legend_y + 3), label, fontsize=6, color=(0.2, 0.2, 0.2), fontname="helv")
+            legend_x += 130
+        
+
+        legend_x = 10
+        legend_y = 70
+        for label, color, style in bias_legend[3:]:
+            if style == "manual_bg":
+                box_rect = fitz.Rect(legend_x, legend_y - 6, legend_x + 15, legend_y + 6)
+                page.draw_rect(box_rect, color=color, fill=color)
+            elif style == "manual_outline":
+                box_rect = fitz.Rect(legend_x, legend_y - 6, legend_x + 15, legend_y + 6)
+                page.draw_rect(box_rect, color=color, width=2)
+            elif style == "manual_thick_line":
+                page.draw_line(fitz.Point(legend_x, legend_y + 4), fitz.Point(legend_x + 15, legend_y + 4), color=color, width=3)
+            
+            page.insert_text(fitz.Point(legend_x + 20, legend_y + 3), label, fontsize=6, color=(0.2, 0.2, 0.2), fontname="helv")
+            legend_x += 130
+        
+        page.draw_line(fitz.Point(0, header_height - 2), fitz.Point(rect.width, header_height - 2), color=(0.6, 0.6, 0.6), width=1.5)
+        
+      
+        bias_annotations = [a for a in annotations if a.get("type") == "bias"]
+        
+        for ann in bias_annotations:
+            text = ann.get("text", "")
+            bias_domain = ann.get("bias_domain", "")
+            if not text or len(text) < 10 or not bias_domain:
                 continue
             
-  
-            if "rct" in models and options.get("run_rct"):
-                status_text.markdown(f"📄 **{filename}** — Classifying RCT...")
-                title = doc.publication.title or ""
-                abstract = doc.publication.abstract or ""
-                
-                doc.rct = models["rct"].predict(
-                    title=title,
-                    abstract=abstract,
-                    threshold_type=options.get("threshold_type", "balanced"),
-                )
-                doc.models_used.append(f"rct:{models['rct'].model_name}")
+            color = BIAS_COLORS.get(bias_domain, (1.0, 0.3, 0.3))
+            style = style_map.get(bias_domain, "highlight")
             
-         
-            if "pico" in models and options.get("run_pico"):
-                status_text.markdown(f"📄 **{filename}** — Extracting PICO...")
-                
-          
-                doc.pico_spans = models["pico"].extract_spans(
-                    title=doc.publication.title,
-                    abstract=doc.publication.abstract,
-                )
-                
-            
-                if doc.full_text:
-                    doc.pico = models["pico"].extract(
-                        title=doc.publication.title,
-                        abstract=doc.publication.abstract,
-                        full_text=doc.full_text,
-                    )
-                
-                doc.models_used.append(f"pico:{models['pico'].model_name}")
-            
-
-            if "bias" in models and options.get("run_bias"):
-                status_text.markdown(f"📄 **{filename}** — Assessing Risk of Bias...")
-                
-                if doc.full_text:
-                    doc.bias = models["bias"].assess(full_text=doc.full_text)
-                    doc.models_used.append(f"bias:{models['bias'].model_name}")
-                else:
-                    doc.warnings.append("No full text available for Bias assessment")
-            
-
-            doc.processing_time_seconds = time.time() - start_time
-            
-            results.append(doc)
-            log.info(f"Processed {filename} in {doc.processing_time_seconds:.2f}s")
-            
-        except Exception as e:
-            log.error(f"Error processing {filename}: {e}", exc_info=True)
-            error_doc = DocumentAnalysis(
-                filename=filename,
-                parse_error=True,
-                warnings=[f"Processing error: {str(e)}"],
-                processing_time_seconds=time.time() - start_time,
-            )
-            results.append(error_doc)
+            try:
+                areas = page.search_for(text)
+                for area in areas:
+                    if area.y0 < header_height:
+                        continue
+                    
+                    if style == "highlight":
+                        highlight = page.add_highlight_annot(area)
+                        highlight.set_colors(stroke=color)
+                        highlight.update()
+                    elif style == "underline":
+                        ul = page.add_underline_annot(area)
+                        ul.set_colors(stroke=color)
+                        ul.update()
+                    elif style == "squiggly":
+                        sq = page.add_squiggly_annot(area)
+                        sq.set_colors(stroke=color)
+                        sq.update()
+                    elif style == "manual_bg":
+                       
+                        bg_rect = fitz.Rect(area.x0 - 2, area.y0 - 1, area.x1 + 2, area.y1 + 1)
+                        
+                        shape = page.new_shape()
+                        shape.draw_rect(bg_rect)
+                        shape.finish(color=color, fill=color, fill_opacity=0.3, overlay=False) 
+                        shape.commit()
+                    elif style == "manual_outline":
+                        
+                        out_rect = fitz.Rect(area.x0 - 1, area.y0 - 1, area.x1 + 1, area.y1 + 1)
+                        page.draw_rect(out_rect, color=color, width=1.5)
+                    elif style == "manual_thick_line":
+                       
+                        line_y = area.y1 - 1
+                        page.draw_line(fitz.Point(area.x0, line_y), fitz.Point(area.x1, line_y), color=color, width=3)
+                        
+            except Exception as e:
+                log.debug(f"Could not annotate text: {e}")
     
+    buf = io.BytesIO()
+    doc.save(buf)
+    doc.close()
+    return buf.getvalue()
 
-    progress_bar.progress(1.0, text="Analysis complete!")
-    status_text.empty()
-    
-    return results
 
-
-def main() -> None:
-    """Main application entry point."""
-    setup_page()
-    display_header()
+def create_pico_highlighted_pdf(pdf_bytes, annotations):
+    """Create PDF with ONLY PICO highlights using distinct styles."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    current_date = datetime.now().strftime("%Y-%m-%d %H:%M")
     
-
-    options = display_sidebar()
+   
+    style_map = {
+        "Population": "highlight",
+        "Intervention": "underline",
+        "Outcomes": "squiggly",
+    }
     
-
-    if "results" not in st.session_state:
-        st.session_state.results: list[DocumentAnalysis] = []
-    
-    if "models_loaded" not in st.session_state:
-        st.session_state.models_loaded = False
-        st.session_state.models: dict[str, Any] = {}
-    
-
-    from rct_reviewer.ui.components.pdf_uploader import pdf_uploader
-    
-    pdf_files = pdf_uploader()
-    
-
-    if pdf_files:
-        analyze_clicked = st.button(
-            "🚀 Analyze Documents",
-            type="primary",
-            use_container_width=True,
+    for page_num, page in enumerate(doc):
+        rect = page.rect
+        header_height = 65
+        
+       
+        header_rect = fitz.Rect(0, 0, rect.width, header_height)
+        page.draw_rect(header_rect, color=(1, 1, 1), fill=(1, 1, 1))
+        
+        page.insert_text(
+            fitz.Point(10, 15),
+            f"Generated by RCT-Reviewer on {current_date}",
+            fontsize=10, color=(0.2, 0.2, 0.2), fontname="helv"
         )
+        page.draw_line(fitz.Point(0, 22), fitz.Point(rect.width, 22), color=(0.8, 0.8, 0.8), width=1)
         
-        if analyze_clicked or st.session_state.get("analyzing"):
-            st.session_state.analyzing = True
+        page.insert_text(fitz.Point(10, 40), "PICO HIGHLIGHTS (Distinct Styles):", fontsize=8, color=(0.3, 0.3, 0.3), fontname="helv")
+        
+       
+        pico_legend = [
+            ("Population (Highlight)", (1.0, 0.84, 0.0), "highlight"),
+            ("Intervention (Underline)", (1.0, 0.6, 0.2), "underline"),
+            ("Outcomes (Squiggly)", (1.0, 0.5, 0.31), "squiggly"),
+        ]
+        
+        legend_x = 10
+        legend_y = 55
+        for label, color, style in pico_legend:
+            if style == "highlight":
+                box_rect = fitz.Rect(legend_x, legend_y - 6, legend_x + 20, legend_y + 6)
+                page.draw_rect(box_rect, color=color, fill=color)
+            elif style == "underline":
+                page.draw_line(fitz.Point(legend_x, legend_y + 4), fitz.Point(legend_x + 20, legend_y + 4), color=color, width=2)
+            elif style == "squiggly":
+                page.draw_line(fitz.Point(legend_x, legend_y + 4), fitz.Point(legend_x + 20, legend_y + 4), color=color, width=1)
+                page.draw_line(fitz.Point(legend_x, legend_y + 2), fitz.Point(legend_x + 20, legend_y + 2), color=color, width=1)
             
-     
-            if not st.session_state.models_loaded:
-                st.session_state.models = initialize_models(options)
-                st.session_state.models_loaded = True
+            page.insert_text(fitz.Point(legend_x + 25, legend_y + 3), label, fontsize=7, color=(0.2, 0.2, 0.2), fontname="helv")
+            legend_x += 150
+        
+        page.draw_line(fitz.Point(0, header_height - 2), fitz.Point(rect.width, header_height - 2), color=(0.6, 0.6, 0.6), width=1.5)
+        
+       
+        pico_annotations = [a for a in annotations if a.get("type") in ["Population", "Intervention", "Outcomes"]]
+        
+        for ann in pico_annotations:
+            text = ann.get("text", "")
+            ann_type = ann.get("type", "")
+            if not text or len(text) < 10:
+                continue
             
-
-            if st.session_state.models:
-                st.session_state.results = analyze_documents(
-                    pdf_files,
-                    st.session_state.models,
-                    options,
-                )
-                st.session_state.analyzing = False
-                st.rerun()
+            color = PICO_COLORS.get(ann_type, (1.0, 0.84, 0.0))
+            style = style_map.get(ann_type, "highlight")
+            
+            try:
+                areas = page.search_for(text)
+                for area in areas:
+                    if area.y0 < header_height:
+                        continue
+                    
+                    if style == "highlight":
+                        highlight = page.add_highlight_annot(area)
+                        highlight.set_colors(stroke=color)
+                        highlight.update()
+                    elif style == "underline":
+                        ul = page.add_underline_annot(area)
+                        ul.set_colors(stroke=color)
+                        ul.update()
+                    elif style == "squiggly":
+                        sq = page.add_squiggly_annot(area)
+                        sq.set_colors(stroke=color)
+                        sq.update()
+            except Exception as e:
+                log.debug(f"Could not annotate text: {e}")
     
+    buf = io.BytesIO()
+    doc.save(buf)
+    doc.close()
+    return buf.getvalue()
 
-    if st.session_state.results:
-        st.divider()
-        
-        from rct_reviewer.ui.components.results_viewer import display_results
-        from rct_reviewer.ui.components.export_buttons import export_results
-        
-        display_results(st.session_state.results)
-        
-        st.divider()
-        export_results(st.session_state.results)
-        
 
-        if settings.ui.show_citation:
-            from rct_reviewer.ui.components.citation_notice import show_citation_notice
-            show_citation_notice()
-    
+def export_to_json(results):
+    """Export results to JSON format."""
+    import json
+    data = []
+    for r in results:
+        data.append({
+            "filename": r["filename"],
+            "rct": r["rct"],
+            "pico": r["pico"],
+            "bias": r["bias"],
+            "timestamp": datetime.now().isoformat()
+        })
+    return json.dumps(data, indent=2, default=str)
 
-    st.divider()
-    st.caption(
-        "RCT-Reviewer v1.0.0 | © 2024-2026 Vihaan Sahu | "
-        "Based on RobotReviewer by Marshall, Kuiper, Wallace (2017) | "
-        "GPL-3.0 License"
+def export_to_csv(results):
+    """Export results to CSV format."""
+    import pandas as pd
+    rows = []
+    for r in results:
+        row = {
+            "filename": r["filename"],
+            "is_rct": r["rct"]["is_rct"],
+            "rct_score": r["rct"]["score"],
+            "rct_probability": r["rct"]["probability"],
+        }
+        for p in r.get("pico", []):
+            row[f"pico_{p['domain'].lower()}"] = " | ".join(p.get("text", []))
+        for b in r.get("bias", []):
+            row[f"bias_{b['domain'].lower().replace(' ', '_')}"] = b.get("judgement", "N/A")
+        rows.append(row)
+    df = pd.DataFrame(rows)
+    return df.to_csv(index=False)
+
+
+def main():
+    st.set_page_config(
+        page_title="RCT-Reviewer", 
+        layout="wide", 
+        page_icon="🔬",
+        initial_sidebar_state="expanded"
     )
+    
+    st.title("RCT-Reviewer")
+    st.markdown("""
+    **Automatic extraction of PICO data and Risk of Bias assessment from clinical trial reports.**
+    
+    Based on [RobotReviewer](https://github.com/ijmarshall/robotreviewer) by Marshall, Kuiper & Wallace (2017).
+    """)
+    
+    with st.spinner("Loading ML models..."):
+        models = load_models()
+        parser = get_parser()
+    
 
+    st.sidebar.header("⚙️ Settings")
+    show_evidence = st.sidebar.checkbox("Show Evidence Sentences", value=True)
+    top_k_sentences = st.sidebar.slider("Evidence Sentences per Domain", 1, 5, 3)
+    
+
+    with st.sidebar.expander("🎨 PDF Highlight Colors", expanded=True):
+        st.markdown("**BIAS (Red Spectrum):**")
+        st.markdown("- <span style='background-color:#FF9999;padding:2px 6px;border-radius:3px;'>Light Pink</span> - Random Sequence", unsafe_allow_html=True)
+        st.markdown("- <span style='background-color:#FF4D4D;padding:2px 6px;border-radius:3px;color:white;'>Bright Red</span> - Allocation", unsafe_allow_html=True)
+        st.markdown("- <span style='background-color:#DC143C;padding:2px 6px;border-radius:3px;color:white;'>Crimson</span> - Blinding (Participants)", unsafe_allow_html=True)
+        st.markdown("- <span style='background-color:#CC6600;padding:2px 6px;border-radius:3px;color:white;'>Rust</span> - Blinding (Outcome)", unsafe_allow_html=True)
+        st.markdown("- <span style='background-color:#CC3333;padding:2px 6px;border-radius:3px;color:white;'>Indian Red</span> - Incomplete Data", unsafe_allow_html=True)
+        st.markdown("- <span style='background-color:#800000;padding:2px 6px;border-radius:3px;color:white;'>Maroon</span> - Selective Reporting", unsafe_allow_html=True)
+        
+        st.markdown("")
+        st.markdown("**PICO (Warm Tones):**")
+        st.markdown("- <span style='background-color:#FFD700;padding:2px 6px;border-radius:3px;'>Gold</span> - Population", unsafe_allow_html=True)
+        st.markdown("- <span style='background-color:#FF9933;padding:2px 6px;border-radius:3px;'>Orange</span> - Intervention", unsafe_allow_html=True)
+        st.markdown("- <span style='background-color:#FF7F50;padding:2px 6px;border-radius:3px;'>Coral</span> - Outcomes", unsafe_allow_html=True)
+    
+    with st.sidebar.expander("📋 How to Cite"):
+        st.markdown("""
+        **Marshall IJ, Kuiper J, & Wallace BC.** RobotReviewer: evaluation of a system for 
+        automatically assessing bias in clinical trials. *JAMIA* 2015.
+        """)
+    
+    uploaded_files = st.file_uploader("📄 Upload Clinical Trial PDFs", type="pdf", accept_multiple_files=True)
+    
+    if not uploaded_files:
+        st.info("👆 Upload PDF files to begin analysis")
+        return
+    
+    if st.button("🚀 Analyze Documents", type="primary"):
+        results = []
+        progress = st.progress(0)
+        status = st.empty()
+        
+        for idx, file in enumerate(uploaded_files):
+            status.markdown(f"**Processing: {file.name}**")
+            try:
+                pdf_bytes = file.getvalue()
+                parsed_data = parser.parse(pdf_bytes)
+                
+                if not parsed_data['sentences']:
+                    st.error(f"Could not extract text from {file.name}")
+                    continue
+                
+                with st.spinner("Running ML analysis..."):
+                    rct_res = models['rct'].predict(parsed_data['title'], parsed_data['abstract'])
+                    pico_res = models['pico'].annotate(parsed_data['sentences'])
+                    bias_res = models['bias'].annotate(parsed_data['sentences'], parsed_data['text'])
+                
+                result = {
+                    "filename": file.name,
+                    "pdf_bytes": pdf_bytes,
+                    "rct": rct_res,
+                    "pico": pico_res,
+                    "bias": bias_res,
+                    "parsed": parsed_data
+                }
+                results.append(result)
+            except Exception as e:
+                st.error(f"Error processing {file.name}: {str(e)}")
+                log.error(f"Error processing {file.name}: {e}", exc_info=True)
+            
+            progress.progress((idx + 1) / len(uploaded_files))
+        
+        status.markdown("✅ Analysis complete!")
+        st.session_state['results'] = results
+    
+   
+    if 'results' in st.session_state and st.session_state['results']:
+        results = st.session_state['results']
+        
+        st.markdown("---")
+        st.markdown("## 📊 Analysis Summary")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Documents", len(results))
+        with col2:
+            rct_count = sum(1 for r in results if r['rct']['is_rct'])
+            st.metric("Identified RCTs", rct_count)
+        with col3:
+            low_bias = sum(1 for r in results if any(b['judgement'] == 'low' for b in r['bias']))
+            st.metric("Low Risk Assessments", low_bias)
+        with col4:
+            st.metric("Documents with Issues", len(results) - rct_count)
+        
+        st.markdown("---")
+        
+        for result in results:
+            with st.expander(f"📄 {result['filename']}", expanded=True):
+                
+            
+                st.markdown("### 🧪 RCT Classification")
+                rct = result['rct']
+                rct_col1, rct_col2, rct_col3 = st.columns(3)
+                with rct_col1:
+                    st.metric("Is RCT?", "✅ Yes" if rct['is_rct'] else "❌ No", delta=f"Score: {rct['score']:.3f}")
+                with rct_col2:
+                    st.metric("Probability", f"{rct['probability']:.1%}")
+                with rct_col3:
+                    st.metric("Model", rct.get('model', 'SVM'))
+                
+         
+                st.markdown("### 🎯 PICO Extraction")
+                pico = result.get('pico', [])
+                pico_cols = st.columns(3)
+                pico_icons = {"Population": "👥", "Intervention": "💊", "Outcomes": "📈"}
+                
+                for i, pico_domain in enumerate(["Population", "Intervention", "Outcomes"]):
+                    with pico_cols[i]:
+                        st.markdown(f"**{pico_icons.get(pico_domain, '📄')} {pico_domain}**")
+                        domain_data = next((p for p in pico if p['domain'] == pico_domain), None)
+                        if domain_data and domain_data.get('text'):
+                            for sent in domain_data['text'][:top_k_sentences]:
+                                st.info(f"• {sent}")
+                        else:
+                            st.caption("_No elements extracted_")
+                
+               
+                st.markdown("### ⚖️ Risk of Bias Assessment")
+                bias = result.get('bias', [])
+                
+                if bias:
+                    import pandas as pd
+                    bias_data = []
+                    for b in bias:
+                        judgement = b.get('judgement', 'N/A')
+                        domain = b.get('domain', '')
+                        color = BIAS_COLORS.get(domain, (1.0, 0.3, 0.3))
+                        hex_color = '#%02x%02x%02x' % (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+                        bias_data.append({
+                            "Domain": b['domain'],
+                            "Color": hex_color,
+                            "Judgement": judgement,
+                            "Evidence": b['text'][0][:60] + "..." if b.get('text') else "N/A"
+                        })
+                    
+                    df = pd.DataFrame(bias_data)
+                    
+                    def color_judgement(val):
+                        return 'background-color: #d4edda; color: #155724; font-weight: bold' if val == 'low' else 'background-color: #f8d7da; color: #721c24; font-weight: bold'
+                    
+                    try:
+                        styled_df = df.style.map(color_judgement, subset=['Judgement'])
+                    except AttributeError:
+                        styled_df = df.style.applymap(color_judgement, subset=['Judgement'])
+                    
+                    st.dataframe(styled_df, width='stretch', hide_index=True)
+                    
+                    if show_evidence:
+                        st.markdown("#### 📝 Evidence Sentences")
+                        for b in bias:
+                            domain = b.get('domain', '')
+                            color = BIAS_COLORS.get(domain, (1.0, 0.3, 0.3))
+                            hex_color = '#%02x%02x%02x' % (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+                            icon = "🟢" if b.get('judgement') == 'low' else "🔴"
+                            
+                            with st.expander(f"{icon} {domain}"):
+                                st.markdown(f"**Color:** <span style='background-color:{hex_color};padding:2px 8px;border-radius:3px;color:{'white' if sum(color) < 1.5 else 'black'}'>{hex_color}</span>", unsafe_allow_html=True)
+                                st.markdown(f"**Judgement:** `{b.get('judgement', 'N/A')}`")
+                                st.markdown("**Evidence:**")
+                                if b.get('text'):
+                                    for i, evidence in enumerate(b['text'][:top_k_sentences], 1):
+                                        st.markdown(f"{i}. {evidence}")
+                                else:
+                                    st.caption("_No evidence sentences found_")
+                
+               
+                st.markdown("#### 📥 Download Highlighted PDFs")
+                st.markdown("Generate two separate PDFs: one with Bias highlights, one with PICO highlights.")
+                
+                dl_col1, dl_col2 = st.columns(2)
+                
+                with dl_col1:
+                    if st.button("🔴 Generate Bias PDF", key=f"bias_pdf_{result['filename']}"):
+                        with st.spinner("Creating Bias-highlighted PDF..."):
+                            annotations = []
+                            for b in result.get('bias', []):
+                                for text in b.get('text', []):
+                                    annotations.append({"text": text, "type": "bias", "bias_domain": b.get('domain', '')})
+                            
+                            bias_pdf = create_bias_highlighted_pdf(result['pdf_bytes'], annotations)
+                            
+                            st.download_button(
+                                label="📥 Download Bias PDF (Red Spectrum)",
+                                data=bias_pdf,
+                                file_name=f"bias_{result['filename']}",
+                                mime="application/pdf",
+                                key=f"dl_bias_{result['filename']}"
+                            )
+                
+                with dl_col2:
+                    if st.button("🟡 Generate PICO PDF", key=f"pico_pdf_{result['filename']}"):
+                        with st.spinner("Creating PICO-highlighted PDF..."):
+                            annotations = []
+                            for p in result.get('pico', []):
+                                for text in p.get('text', []):
+                                    annotations.append({"text": text, "type": p['domain']})
+                            
+                            pico_pdf = create_pico_highlighted_pdf(result['pdf_bytes'], annotations)
+                            
+                            st.download_button(
+                                label="📥 Download PICO PDF (Warm Colors)",
+                                data=pico_pdf,
+                                file_name=f"pico_{result['filename']}",
+                                mime="application/pdf",
+                                key=f"dl_pico_{result['filename']}"
+                            )
+        
+
+        st.markdown("---")
+        st.markdown("## 📤 Export Results")
+        exp_col1, exp_col2 = st.columns(2)
+        
+        with exp_col1:
+            if st.button("📥 Export JSON"):
+                json_data = export_to_json(results)
+                st.download_button("Download JSON", json_data, f"rct_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json", "application/json")
+        
+        with exp_col2:
+            if st.button("📥 Export CSV"):
+                csv_data = export_to_csv(results)
+                st.download_button("Download CSV", csv_data, f"rct_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", "text/csv")
 
 if __name__ == "__main__":
     main()

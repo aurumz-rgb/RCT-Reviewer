@@ -8,8 +8,7 @@ Original algorithm by: Schwartz & Hearst (2003)
 Python implementation based on work by: Vincent Van Asch and Phil Gooch
 (MIT License)
 
-Modernized for RCT-Reviewer v1.0.0 by Vihaan Sahu
-
+RCT-Reviewer
 Copyright (C) 2026 Vihaan Sahu
 """
 

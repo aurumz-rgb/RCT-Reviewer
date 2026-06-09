@@ -1,29 +1,22 @@
 """
 RCT-Reviewer core module.
-
-Copyright (C) 2026 Vihaan Sahu
 """
+
+# Author:
+#   Vihaan Sahu <pteroisvolitans12@gmail.com>
+
+
 
 from rct_reviewer.core.models import (
     Annotation,
     BiasAnnotation,
-    BiasDomain,
-    BiasJudgement,
-    DocumentAnalysis,
     PICOAnnotation,
-    PICODomain,
-    PublicationInfo,
-    RCTResult,
+    DocumentAnalysis,
 )
 
 __all__ = [
     "Annotation",
-    "BiasAnnotation",
-    "BiasDomain",
-    "BiasJudgement",
-    "DocumentAnalysis",
+    "BiasAnnotation", 
     "PICOAnnotation",
-    "PICODomain",
-    "PublicationInfo",
-    "RCTResult",
+    "DocumentAnalysis",
 ]

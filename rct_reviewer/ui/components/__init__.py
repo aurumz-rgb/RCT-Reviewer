@@ -3,7 +3,6 @@ RCT-Reviewer UI components.
 
 Reusable Streamlit components for displaying results.
 
-Copyright (C) 2026 Vihaan Sahu
 """
 
 from rct_reviewer.ui.components.citation_notice import show_citation_notice
