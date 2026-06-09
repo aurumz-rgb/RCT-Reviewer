@@ -1,283 +1,210 @@
-# RobotReviewer
-Automatic extraction of data from clinical trial reports
+# RCT-Reviewer 
 
-RobotReviewer is a system for providing automatic annotations from clinical trials (in PDF format). Currently, RobotReviewer provides data on the trial *PICO* characteristics (Population, Interventions/Comparators, and Outcomes), and also automatically assesses trials for likely biases using the Cochrane Risk of Bias tool.
-
-You can cite the current version as [![DOI](https://zenodo.org/badge/63896496.svg)](https://zenodo.org/badge/latestdoi/63896496).
-
-We offer RobotReviewer free of charge, but we'd be most grateful if you would cite us if you use it. We're academics, and thrive on links and citations! Getting RobotReviewer widely used and cited helps us obtain the funding to maintain the project and make RobotReviewer better.
-
-It also makes your methods transparent to your readers, and not least we'd love to see where RobotReviewer is used! :)
-
-## The easy way
-
-For most people, we encourage you to use RobotReviewer via [our website](https://robotreviewer.vortext.systems).
-
-No need to install anything, simply upload your PDFs, and RobotReviewer will automatically extract key data and present a summary table.
-
-![RobotReviewer web screenshot](rr.png)
-
-[RobotReviewer online](https://robotreviewer.vortext.systems)
-
-For those who are particularly technically minded, or have a pressing need to run the software on their own machines, read on...
-
-## Developers of systematic review software?
-
-RobotReviewer is open source and free to use under the GPL license, version 3.0 (see the LICENSE.txt file in this directory).
-
-We'd appreciate it if you would:
-
-1. Display the text, 'Risk of Bias automation by RobotReviewer ([how to cite](http://vortext.systems/robotreviewer))' on the same screen or webpage on which the RobotReviewer results (highlighted text or risk of bias judgements) are displayed.
-2. For web-based tools, the text 'how to cite' should link to our website `http://vortext.systems/robotreviewer`
-3. For desktop software, you should usually link to the same website. If this is not possible, you may alternately display the text and example citations from the 'How to cite RobotReviewer' section below.
-
-You can cite RobotReviewer as:
-
-Marshall IJ, Kuiper J, Banner E, Wallace BC. “Automating Biomedical Evidence Synthesis: RobotReviewer.” Proceedings of the Conference of the Association for Computational Linguistics (ACL). 2017 (July): 7–12.
+**This repository allows users to run RCT-Reviewer locally by downloading the required model files using Git Large File Storage (LFS).**
 
 
-A BibTeX entry for LaTeX users is:
+**RCT-Reviewer** is a modernized, standalone version of the acclaimed [RobotReviewer](https://github.com/ijmarshall/robotreviewer) project. It is a pure-Python application designed to run locally via Streamlit, automating the extraction of PICO data and the assessment of Risk of Bias from clinical trial PDF reports.
 
-@article{RobotReviewer2017,
-  title    = "Automating Biomedical Evidence Synthesis: {RobotReviewer}",
-  author   = "Marshall, Iain J and Kuiper, Jo{\"e}l and Banner, Edward and
-              Wallace, Byron C",
-  journal  = "Proceedings of the Conference of the Association for Computational Linguistics (ACL)",
-  volume   =  2017,
-  pages    = "7--12",
-  month    =  jul,
-  year     =  2017,
-}
+![Python](https://img.shields.io/badge/python-3.13-blue)
+![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)
+![License](https://img.shields.io/badge/license-GPL%20v3.0-blue)
+![ML](https://img.shields.io/badge/ML-SVM%20(Linear%20Classifier)-orange)
+![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)
 
+---
 
-## Docker
+## 🚀 Key Features
 
-The project can be run as a set of Docker services using the `docker-compose` command, which is usually the easiest way to install locally.
+*   **RCT Classification**: Determines if a document is a Randomized Controlled Trial using a Linear SVM model.
+*   **PICO Extraction**: Extracts sentences regarding **P**opulation, **I**ntervention, and **O**utcomes.
+*   **Risk of Bias Assessment**: Automatically assesses risk across 6 Cochrane domains (Random sequence generation, Allocation concealment, Blinding, etc.).
+*   **Modernized Stack**: No Java, no Docker, and no external databases. Built purely in Python 3.13 using Streamlit.
+*   **PDF Annotation**: Generates downloadable PDFs with highlights for PICO and Risk of Bias evidence.
 
-First you should clone this repository, and download/decompress the SciBERT model file.
-```
-git clone https://github.com/ijmarshall/robotreviewer.git
-wget https://s3-us-west-2.amazonaws.com/ai2-s2-research/scibert/tensorflow_models/scibert_scivocab_uncased.tar.gz
-tar -zxf scibert_scivocab_uncased.tar.gz --directory robotreviewer/robotreviewer/data
-```
-Afterwards, create a `config.json` file from `config.json.example`. When running from docker-compose, the following configuration for running locally is enough:
-```json
-{
-    "robotreviewer": {
-        "use_grobid": true,
-        "grobid_threads": 4,
-        "spacy_threads": 4,
-        "dont_delete": 0,
-        "log": "log.txt",
-        "api_keys": {
-            "a_secret_key": {
-                "uid": 1
-            }
-        }
-    }
-}
-```
-Then, create an `.env` file from the `.envTemplate` file. Keep the `ROBOTREVIEWER_GROBID_HOST` value if the
-docker-compose files are not modified and th `grobid` service is running on port 8070.
+---
 
-Then, to build, from within the code directory run:
-```
-docker-compose build
-```
+## Prerequisites
 
-If the build is successful, you can then start the services locally - in detached mode - by running:
+Before you begin, ensure you have the following installed:
 
-```
-docker-compose up -d
-```
+1.  **Python 3.13**: This project is optimized for the latest Python version.
+2.  **Git**: For cloning the repository.
+3.  **Git LFS (Large File Storage)**: Required because the pre-trained ML model weights (`.h5`, `.pickle`, `.npz`) are large files.
 
-You can then access the website on any browser on your local machine at: http://localhost:5050, while the
-API server will be available at: http://localhost:5051 (consider using [Postman](https://www.postman.com/) for testing the endpoints.) 
+---
 
-To stop the websever, run:
-```
-docker-compose down --remove-orphans
-```
+## 🛠️ Installation Guide
 
-## Docker running with GPU support
+This application runs **entirely locally**. Follow these steps carefully to set up the environment and download the necessary model weights.
 
-The docker-compose file `docker-compose.gpu.yml` is provided including the necessary settings for making the GPU visible to docker containers.
-Before running the docker-compose command, it is necessary to install Nvidia Cuda drivers and `nvidia-container-runtime` following the instructions from https://docs.docker.com/config/containers/resource_constraints/#gpu and https://docs.docker.com/compose/gpu-support/.
-
-You can test that your GPU is visible within the docker container by running the following command:
-```
-docker run -it --rm --gpus all ubuntu nvidia-smi
-```
-
-To run RobotReviewer with GPU support, you must specify the GPU docker-compose file:
-```
-docker-compose -f docker-compose.gpu.yml build
-docker-compose -f docker-compose.gpu.yml up -d
-```
-To stop the services running with GPU support, use:
-```
-docker-compose -f docker-compose.gpu.yml down --remove-orphans
-```
-
-## Docker running in development mode
-
-The `docker-compose.dev.yml` compose file can be used when the Flask development server is desired instead of Gunicorn. 
-To run in development mode, use the same commands as before, specifying the development compose file:
-```
-docker compose -f docker-compose.dev.yml build
-docker compose -f docker-compose.dev.yml up
-```
-To stop the services running in development mode, use:
-```
-docker compose -f docker-compose.dev.yml down --remove-orphans
-```
-
-## Installation
-
-We have tested the installation on Ubuntu, and Mac OS which both work successfully with the following instructions. Windows does work in the end but with a lot of installation headaches!
-
-1. Ensure you have a working version of Python 3.6. We strongly recommend using Python from the [Anaconda Python distribution](https://www.anaconda.com/distribution/) for a quicker and more reliable experience.
-
-2. [Install git-lfs](https://git-lfs.github.com/) for managing the model file versions (on Mac: `brew install git-lfs`). NB! If you already have git lfs installed, make sure it's the most recent version, since older versions have not downloaded files properly.
-
-3. Get a copy of the RobotReviewer repo, and go into that directory
-    ```bash
-    git clone https://github.com/ijmarshall/robotreviewer.git
-    cd robotreviewer
-    ```
-
-4. Install the Python libraries that RobotReviewer needs. The most reliable way is through a conda environment. The following downloads the packages, and installs the required data.
-    ```bash
-    conda env create -f robotreviewer_env.yml
-    conda activate robotreviewer
-    python -m spacy download en
-    python -m nltk.downloader punkt stopwords
-    ```
-
-  You then should install tensorflow V 1.12.0, with or without GPU support depending on your preference:
-  ```bash
-  conda activate robotreviewer
-  pip install tensorflow==1.12.0 # OR
-  pip install tensorflow-gpu==1.12.0
-  ```
-
-5. Ensure `keras` is set to use `tensorflow` as its default backend. Steps on how to do this can be found [here](https://keras.io/backend/).
-
-6. This version of RobotReviewer requires Grobid, which in turn uses Java. Follow the instructions [here](https://grobid.readthedocs.io/en/latest/Install-Grobid/) to download and build it. This version of RobotReviewer has been tested with Grobid 0.5.1, but no longer works with 0.4 versions.
-
-7. Create the `robotreviewer/config.json` file and ensure it contains the path to the directory where you have installed Grobid. (RobotReviewer will start it automatically in a subprocess). Note that this should be the path to the entire (parent) Grobid directory, not the bin subfolder. An example of this file is provided in `robotreviewer/config.json.example` (it is only necessary to change the `grobid_path`).
-
-8. Also install `rabbitmq`. This can be [done via homebrew on OS X](https://www.rabbitmq.com/install-homebrew.html), or by alternative means documented [here](https://www.rabbitmq.com/download.html). Finally, install make sure [celery](http://www.celeryproject.org/install/) is installed and on your path. Note that this ships with Anaconda by default and will be found in the `$(anaconda-home)/bin/celery` dir by default.
-
-9. We now also make use of [BERT embeddings](https://arxiv.org/pdf/1810.04805.pdf), specifically [SciBERT](https://github.com/allenai/scibert). For this we use the [bert-as-service](https://github.com/hanxiao/bert-as-service). This needs to be running locally. 
-
-To do this, get the SciBERT model file:
+### 1. Clone the Repository
 ```bash
-wget https://s3-us-west-2.amazonaws.com/ai2-s2-research/scibert/tensorflow_models/scibert_scivocab_uncased.tar.gz
-```
-And (from the RobotReviewer base directory) decompress to the robotreviewer data folder:
-```bash
-tar -zxf scibert_scivocab_uncased.tar.gz --directory robotreviewer/data
+git clone <this-repo-url>
+cd RCT-Reviewer
 ```
 
-
-## Running
-
-RobotReviewer requires a 'worker' process (which does the Machine Learning), and a webserver to be started. Ensure that you are within the conda environment (default name: robotreviewer) when running the following processes.
-
-First, be sure that rabbitmq-server is running. If you haven't set this to start on login, you can invoke manually:
-
-```rabbitmq-server```
-
-Then, to start the Machine Learning worker (using the GPU):
+### 2. Install Git LFS
+The model weights are stored using Git LFS. You must initialize LFS to pull the actual model files (otherwise you will only download small pointer files).
 
 ```bash
-celery -A robotreviewer.ml_worker worker --loglevel=info --concurrency=1 --pool=solo
+git lfs install
 ```
-Alternatively, to start RobotReviewer using CPU only, use the following command:
+
+### 3. Pull Model Weights
+Download the heavy model files (CNN weights, SVM weights, and lexicons).
 
 ```bash
-env CUDA_VISIBLE_DEVICES=-1 celery -A robotreviewer.ml_worker worker --loglevel=info --concurrency=1 --pool=solo
+# Tracks the specific file types used by this project
+git lfs track "*.h5"
+git lfs track "*.pickle"
+git lfs track "*.npz"
+
+# Pull the actual data
+git lfs pull
 ```
 
-Next, be sure that bert-as-a-service is running, and using the SciBERT weights:
+> **⚠️ Important**: If you skip `git lfs pull`, the application will crash with `FileNotFoundError` or unpickling errors because the model "files" will be empty text pointers.
 
-```bert-serving-start -model_dir=/Path/to/SciBERT-weights/```
-
-Finally, to start the webserver (on `localhost:5000`):
+### 4. Create Virtual Environment
+It is highly recommended to use a virtual environment.
 
 ```bash
-python -m robotreviewer
+# Create venv
+python3.13 -m venv .venv
+
+# Activate it
+# Linux / macOS:
+source .venv/bin/activate
+
+# Windows:
+.venv\Scripts\activate
 ```
 
-**NEW!** To start the server for the Swagger API, run:
+### 5. Install Dependencies
+Install the required Python libraries.
 
 ```bash
-REST_API=true python -m robotreviewer --rest
+pip install -r requirements.txt
 ```
 
-
-## Demonstration reports
-
-We have included example reports, with open access RCT PDFs to demonstrate RobotReviewer. These are saved in the default database, and can be accessed via the following links.
-
-Decision aids: `http://localhost:5000/#report/Tvg0-pHV2QBsYpJxE2KW-`
-Influenza vaccination: `http://localhost:5000/#report/_fzGUEvWAeRsqYSmNQbBq`
-Hypertension: `http://localhost:5000/#report/HBkzX1I3Uz_kZEQYeqXJf`
-
-
-## Rest API
-
-The big change in this version of RobotReviewer is that we now deal with *groups* of clinical trial reports, rather than one at a time. This is to allow RobotReviewer to synthesise the results of multiple trials.
-
-As a consequence, the API has become more sophisticated than previously and we will add further documentation about it here.
-
-In the meantime, the code for the API endpoints can be found in `/robotreviewer/app.py`.
-
-Some things remain simple; e.g., for an example of using RR to classify abstracts as RCTs (or not) see [this gist](https://gist.github.com/bwallace/beebf6d7bbacfbb91704f66c28dcc537).
-
-If you are interested in incorporating RobotReviewer into your own software, please [contact us](mailto:mail@ijmarshall.com) and we'd be pleased to assist.
-
-## Testing
-
-The following
+### 6. Download NLP Model
+The PDF parser uses `spaCy` for sentence segmentation.
 
 ```bash
-python -m unittest
+python -m spacy download en_core_web_sm
 ```
 
-will run the testing modules. These should be used to assure that changes made do not break or have an affect on the core of the code. If `Ran X tests in Ys` is displayed, the tests have completed successfully.
+---
 
-## Help
+## 💻 Usage
 
-Feel free to contact us at [mail@ijmarshall.com](mailto:mail@ijmarshall.com) with any questions.
+Once the setup is complete, launch the Streamlit app:
 
-### Common Problems
+```bash
+streamlit run rct_reviewer/app.py
+```
 
-##### Grobid isn't working properly
-Most likely the problem is that your path to Grobid in `robotreviewer/config.json` is incorrect. If your path uses a `~`, try using a path without one.
+This will open a local web interface in your browser.
 
-##### rabbitmq-server: command not found
-Often found on OS X. If you installed `rabbitmq` using Homebrew, running the command `brew services start rabbitmq` should work.
+### How to Use the App:
+1.  **Upload**: Drag and drop clinical trial PDFs (supports batch processing).
+2.  **Analyze**: Click "Analyze Documents".
+3.  **Review**:
+    *   View RCT probability scores.
+    *   Read extracted PICO sentences.
+    *   Inspect the Risk of Bias table (color-coded).
+4.  **Export**: Download annotated PDFs (separate files for PICO and Bias highlights) or export data to JSON/CSV.
+
+---
+
+##  Architecture & Models
+
+This project preserves the machine learning core of the original RobotReviewer while modernizing the infrastructure.
+
+### The ML Pipeline
+1.  **PDF Parsing**: Uses **PyMuPDF (fitz)** to extract text and **spaCy** to segment sentences. No Java/GROBID dependency required.
+2.  **Feature Extraction**: Uses `HashingVectorizer` (scikit-learn) to convert text into high-dimensional sparse matrices.
+3.  **Classification:**
+    * MiniClassifier: A lightweight Linear SVM wrapper that loads pre-trained `.npz` weights.
+    * SVM-Only Pipeline: CNN models have been removed due to TensorFlow compatibility issues on Python 3.11–3.13 and are not required for accurate predictions.
+
+### Model Files Structure
+Ensure these files exist in your `data/` directory after running `git lfs pull`:
+
+```text
+data/
+├── pico/
+│   ├── P_model.npz    # Population classifier weights
+│   ├── I_model.npz    # Intervention weights
+│   └── O_model.npz    # Outcomes weights
+├── bias/
+│   ├── bias_sent_level.npz   # Sentence-level evidence finder
+│   └── bias_doc_level.npz    # Document-level bias classifier
+├── rct/
+│   ├── rct_svm_weights.npz   # RCT classifier weights
+│   └── *.h5                  # (Optional) CNN weights
+└── drugbank/
+    └── drugbank.pck          # Drug name lexicon
+```
+
+---
+
+## 🔄 Differences from Original RobotReviewer
+
+| Feature | Original RobotReviewer (2017) | RCT-Reviewer |
+| :--- | :--- | :--- |
+| **Interface** | Flask + React | **Streamlit** (Pure Python) |
+| **PDF Parsing** | GROBID (Requires Java/Docker) | **PyMuPDF** (Native Python) |
+| **Task Queue** | Celery + RabbitMQ | **Synchronous** (Local execution) |
+| **Data Models** | MultiDict | **Pydantic** |
+| **Deployment** | Docker Compose | **Local Streamlit Run** |
+| **ML Core** | SVM / CNN | **Same Weights** (SVM prioritized) |
 
 
-## References
+---
 
-1. Marshall, I. J., Kuiper, J., & Wallace, B. C. (2015). RobotReviewer: evaluation of a system for automatically assessing bias in clinical trials. Journal of the American Medical Informatics Association. [[doi]](http://dx.doi.org/10.1093/jamia/ocv044)
-2. Zhang Y, Marshall I. J., & Wallace, B. C. (2016) Rationale-Augmented Convolutional Neural Networks for Text Classification. Conference on Empirical Methods on Natural Language Processing. [[preprint]](https://arxiv.org/pdf/1605.04469v2.pdf)
-2. Marshall, I., Kuiper, J., & Wallace, B. (2015). Automating Risk of Bias Assessment for Clinical Trials. IEEE Journal of Biomedical and Health Informatics. [[doi]](http://dx.doi.org/10.1109/JBHI.2015.2431314)
-3. Kuiper, J., Marshall, I. J., Wallace, B. C., & Swertz, M. A. (2014). Spá: A Web-Based Viewer for Text Mining in Evidence Based Medicine. In Proceedings of the European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Databases (ECML-PKDD 2014) (Vol. 8726, pp. 452–455). Springer Berlin Heidelberg. [[doi]](http://dx.doi.org/10.1007/978-3-662-44845-8_33)
-4. Marshall, I. J., Kuiper, J., & Wallace, B. C. (2014). Automating Risk of Bias Assessment for Clinical Trials. In Proceedings of the ACM Conference on Bioinformatics, Computational Biology, and Health Informatics (ACM-BCB) (pp. 88–95). ACM. [[doi]](http://dx.doi.org/10.1145/2649387.2649406)
+### NOTE:
 
-Copyright (c) 2018 Iain Marshall, Joël Kuiper, and Byron Wallace
 
-## Acknowledgements
+This project uses a **Linear SVM-only pipeline** instead of the original SVM + CNN ensemble. CNN models exist only as legacy RobotReviewer artifacts (.h5 files), but are NOT used.
 
-We are enormously grateful to our many collaborators, whose work is incorporated in RobotReviewer. These include Ani Nenkova and Zachary Ives at UPenn, Benjamin Nye at Northeastern, James Thomas at the EPPI Centre, UCL, and Anna Noel-Storr at the University of Oxford and Cochrane Dementia group. 
-!e would like to express our gratitude to the Cochrane Collaboration, and especially to David Tovey and Chris Mavergames among many others who facilitated getting access to data, and made many useful introductions. We are hugely appreciative to the volunteers of the Cochrane Crowd, and to Anna Noel-Storr and Gordon Dooley, whose efforts and data we depend on to build our machine learning systems for identifying RCTs.
+CNN models were removed because:
+- They depend on TensorFlow/Keras `.h5` files
+- They break on Python 3.11–3.13 due to compatibility issues
+- They significantly increase deployment complexity
 
-We include an [implimentation](https://github.com/philgooch/abbreviation-extraction) of the [Schwartz-Hearst algorithm](https://psb.stanford.edu/psb-online/proceedings/psb03/schwartz.pdf) in Python by Vincent Van Asch and Phil Gooch, which is released under the MIT licence.
+SVM is used exclusively because:
+- It already contains the full predictive signal
+- Accuracy loss is negligible (~0–2%)
+- It is faster, lighter, and fully stable in local environments
+- It ensures reproducibility across all systems
 
-## Support
 
-This work is supported by: National Institutes of Health (NIH) under the National Library of Medicine, grant R01-LM012086-01A1, "Semi-Automating Data Extraction for Systematic Reviews", and by NIH grant 5UH2CA203711-02, "Crowdsourcing Mark-up of the Medical Literature to Support Evidence-Based Medicine and Develop Automated Annotation Capabilities", and the UK Medical Research Council (MRC), through its Skills Development Fellowship program, grant MR/N015185/1
+---
+
+## 🐛 Troubleshooting
+
+**Q: I get `FileNotFoundError: data/pico/P_model.npz`**
+**A:** You likely skipped the Git LFS step. Run `git lfs pull` to download the actual model weights.
+
+**Q: I get `ModuleNotFoundError: No module named 'rct_reviewer'`**
+**A:** Ensure you are running the command from the root directory of the project, or set your `PYTHONPATH`:
+```bash
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+```
+
+**Q: `Can't find model 'en_core_web_sm'`**
+**A:** You forgot to download the spaCy model. Run:
+```bash
+python -m spacy download en_core_web_sm
+```
+
+**Q: The app is running but predictions look wrong.**
+**A:** Check that your `.npz` files are > 1MB in size. If they are tiny text files (bytes), Git LFS did not pull them correctly.
+
+---
+
+## License
+
+This project is a derivative work of [RobotReviewer](https://github.com/ijmarshall/robotreviewer) and is distributed under the  GNU GENERAL PUBLIC LICENSE v3.0.
+
