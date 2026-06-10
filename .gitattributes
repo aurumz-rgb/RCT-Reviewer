@@ -9,3 +9,4 @@ robotreviewer/data/pico/PICO_embeddings/outcomes/weights.h5 filter=lfs diff=lfs 
 *.pickle filter=lfs diff=lfs merge=lfs -text
 *.p filter=lfs diff=lfs merge=lfs -text
 *.hdf5 filter=lfs diff=lfs merge=lfs -text
+*.joblib filter=lfs diff=lfs merge=lfs -text
