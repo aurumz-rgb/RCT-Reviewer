@@ -15,12 +15,23 @@ log = logging.getLogger(__name__)
 class Drugbank:
     """Drug lookup lexicon."""
     def __init__(self):
-        path = get_data_path('drugbank/drugbank.pck')
-        if path.exists():
-            import pickle
-            with open(path, 'rb') as f:
-                self.data = pickle.load(f)
+        from rct_reviewer.config import settings
+        
+        if settings.use_joblib:
+            path = get_data_path('drugbank/drugbank.joblib')
+            loader = lambda p: __import__('joblib').load(p)
         else:
+            path = get_data_path('drugbank/drugbank.pck')
+            loader = lambda p: __import__('pickle').load(open(p, 'rb'))
+
+        if path.exists():
+            try:
+                self.data = loader(path)
+            except Exception as e:
+                log.warning(f"Failed to load drugbank: {e}")
+                self.data = {}
+        else:
+            log.warning(f"Drugbank file not found at {path}")
             self.data = {}
 
     def contains_drug(self, text):

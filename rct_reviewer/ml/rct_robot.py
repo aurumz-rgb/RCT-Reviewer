@@ -6,13 +6,12 @@ import sys
 import sklearn.linear_model
 
 # Compatibility fix for old scikit-learn pickle files on Python 3.13+
-# This maps the old module path to the new one so pickle.load() works.
 if 'sklearn.linear_model.logistic' not in sys.modules:
     sys.modules['sklearn.linear_model.logistic'] = sklearn.linear_model
 
-    
 import json
 import pickle
+import joblib
 import glob
 import numpy as np
 from pathlib import Path
@@ -20,6 +19,7 @@ from scipy.sparse import hstack
 from sklearn.feature_extraction.text import HashingVectorizer
 from rct_reviewer import get_data_path
 from rct_reviewer.ml.classifier import MiniClassifier
+from rct_reviewer.config import settings
 import logging
 
 log = logging.getLogger(__name__)
@@ -58,24 +58,32 @@ class RCTRobot:
             log.warning("rct_model_calibration.json not found. Using defaults.")
             self.constants = DEFAULT_CALIBRATION
         
-        # Load pickle calibration files (may fail due to sklearn version mismatch)
+        # Load pickle/joblib calibration files
         self.calibration = {}
         pkl_files = [
-            ('svm_cnn', 'rct/svm_cnn_calibration.pck'),
-            ('svm_cnn_ptyp', 'rct/svm_cnn_ptyp_calibration.pck')
+            ('svm_cnn', 'rct/svm_cnn_calibration'),
+            ('svm_cnn_ptyp', 'rct/svm_cnn_ptyp_calibration')
         ]
-        for key, fname in pkl_files:
-            fpath = get_data_path(fname)
-            if fpath.exists():
+        
+        for key, fname_base in pkl_files:
+            if settings.use_joblib:
+                fpath = get_data_path(fname_base + '.joblib')
                 try:
-                    with open(fpath, 'rb') as f:
-                        self.calibration[key] = pickle.load(f)
-                    log.info(f"Loaded calibration: {fname}")
+                    self.calibration[key] = joblib.load(fpath)
+                    log.info(f"Loaded Joblib calibration: {fpath.name}")
                 except Exception as e:
-                    log.warning(f"Could not load {fname} (sklearn version mismatch?): {e}")
-                    log.warning("Probability calibration will use sigmoid fallback.")
+                    log.warning(f"Could not load {fpath}: {e}")
+            else:
+                fpath = get_data_path(fname_base + '.pck')
+                if fpath.exists():
+                    try:
+                        with open(fpath, 'rb') as f:
+                            self.calibration[key] = pickle.load(f)
+                        log.info(f"Loaded Pickle calibration: {fpath.name}")
+                    except Exception as e:
+                        log.warning(f"Could not load {fpath}: {e}")
 
-        # Try loading CNN (TensorFlow)
+        
         self.cnn_models = []
         self.vocab_map = None
         self._load_cnn()
@@ -86,15 +94,29 @@ class RCTRobot:
             tf.get_logger().setLevel('ERROR')
             from tensorflow.keras.models import load_model
             
-            cnn_files = glob.glob(str(get_data_path('rct/*.h5')))
-            if cnn_files:
-                log.info(f"Loading {len(cnn_files)} CNN models...")
-                self.cnn_models = [load_model(f) for f in cnn_files]
+            # directory path 
+            rct_dir = get_data_path('rct')
+            
+           
+            if rct_dir.exists():
+                cnn_files = list(rct_dir.glob("*.h5"))
                 
-                vocab_path = get_data_path('rct/cnn_vocab_map.pck')
-                if vocab_path.exists():
-                    with open(vocab_path, 'rb') as f:
-                        self.vocab_map = pickle.load(f)
+                if cnn_files:
+                    log.info(f"Loading {len(cnn_files)} CNN models...")
+                    self.cnn_models = [load_model(f) for f in cnn_files]
+                    
+                    
+                    vocab_base = 'rct/cnn_vocab_map'
+                    if settings.use_joblib:
+                        vocab_path = get_data_path(vocab_base + '.joblib')
+                        if vocab_path.exists():
+                            self.vocab_map = joblib.load(vocab_path)
+                    else:
+                        vocab_path = get_data_path(vocab_base + '.pck')
+                        if vocab_path.exists():
+                            with open(vocab_path, 'rb') as f:
+                                self.vocab_map = pickle.load(f)
+                            
         except ImportError:
             log.warning("TensorFlow not found. Using SVM-only mode.")
         except Exception as e:
@@ -113,7 +135,7 @@ class RCTRobot:
         
         threshold = self.constants['thresholds']['svm']['balanced']
         
-        # Probability (sigmoid fallback if calibration models didn't load)
+       
         prob = float(1.0 / (1.0 + np.exp(-score)))
         
         return {
