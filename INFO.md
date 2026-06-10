@@ -1,34 +1,32 @@
-As per plan:
+
+<please ignore this file.>
+
+
+# V.S.
+
 
 rct_reviewer/
 
+app.py : uses .joblib, .npz files (locally have to pull then model files using LFS)
 
-app.py : will use joblib files
+app1.py : uses .pickle, .pck, .npz files (locally have to pull then model files using LFS)
 
-app1.py : will use pickle files
-
-app2.py : will connect with hugging face hub.
-
+app2.py : works by connecting with hugging face hub repository [Aurumz/RCT-Reviewer] (can be run directly without pulling the model files uing LFS)
 
 
 
 
-
-To run scripts/pickle-to-joblib:
+- To run scripts/pickle-to-joblib in the .venv of the same directory:
 
 python convert_models.py 
 
-in the .venv of the same directory
 
 
 
-
-
-
-To upload the files to hugging face, use: (it uploaded h5) files too so make sure you rmeove that by either modifying the upload_to_hf.py or remove the h5 after committing.
+- This uploads the model files to Hugging Face Hub.
 
 python upload_to_hf.py
 
 
 
-
+- P.S: Also check the git LFS pull / push, commit guide .md file.

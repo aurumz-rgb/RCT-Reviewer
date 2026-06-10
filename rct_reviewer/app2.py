@@ -4,7 +4,6 @@
 # This .py file downloads models from Hugging Face hub.
 
 import os
-# MUST be set before importing huggingface_hub or any ML libs
 os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "300"
 os.environ["HF_HUB_ETAG_TIMEOUT"] = "60"
 
