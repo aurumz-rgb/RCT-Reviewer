@@ -4,8 +4,8 @@
 ![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)
 ![License](https://img.shields.io/badge/license-GPL%20v3.0-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20618338.svg)](https://doi.org/10.5281/zenodo.20618338)
-[![Version](https://img.shields.io/badge/version-v1.0-8A2BE2?style=for-the-badge)](https://github.com/aurumz-rgb/RCT-Reviewer/releases)
-[![Maintained](https://img.shields.io/badge/maintained-yes-success?style=for-the-badge)](https://github.com/aurumz-rgb/RCT-Reviewer/graphs/commit-activity)
+[![Version](https://img.shields.io/badge/version-v1.0-8A2BE2)](https://github.com/aurumz-rgb/RCT-Reviewer/releases)
+[![Maintained](https://img.shields.io/badge/maintained-yes-success)](https://github.com/aurumz-rgb/RCT-Reviewer/graphs/commit-activity)
 ![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)
 
 
