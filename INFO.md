@@ -32,9 +32,3 @@ python upload_to_hf.py
 
 
 
-
-
-What to do now?
-
-
-simple, clean the files acche se and push and check 
