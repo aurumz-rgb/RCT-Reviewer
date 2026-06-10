@@ -9,7 +9,7 @@
 ![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)
 
 
-**RCT-Reviewer** is a modernized, standalone version of the acclaimed [RobotReviewer](https://github.com/ijmarshall/robotreviewer) project. Access at: [https://rct-reviewer.github.io](https://rct-reviewer.github.io)
+**RCT-Reviewer** is a modernized, standalone version of the acclaimed [RobotReviewer](https://github.com/ijmarshall/robotreviewer) project.
 
 
 ---
@@ -54,8 +54,10 @@ This project preserves the machine learning core of the original RobotReviewer w
 ### Model Redistribution Note
 This repository contains joblib-converted model artifacts originally developed in RobotReviewer. The old pickle model files were compressed and redistributed into `.joblib` format using the `convert_models.py` script and respective directories to ensure better compatibility and smaller file sizes for modern Python environments.
 
-### Hugging Face Repository
+
 <img src="assets/huggingface.png" width="90" align="right" />
+
+### Hugging Face Repository
 
 The users can access the RCT-Reviewer Hugging Face Repository at:
 [huggingface.co/Aurumz/RCT-Reviewer](https://huggingface.co/Aurumz/RCT-Reviewer)
@@ -287,7 +289,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 
 ##  Acknowledgements
 
-RCT-Reviewer is a modernized version of the original RobotReviewer. I extend my sincere gratitude to the original authors—**Iain J. Marshall, Joël Kuiper, Edward Banner, and Byron C. Wallace**—for their foundational work in biomedical NLP and for releasing the project as open-source.
+RCT-Reviewer is a modernized version of the original RobotReviewer. I extend my sincere gratitude to the original authors: **Iain J. Marshall, Joël Kuiper, Edward Banner, and Byron C. Wallace** for their foundational work in biomedical NLP and for releasing the project as open-source.
 
 I would also like to thank all contributors and collaborators involved in the RobotReviewer ecosystem, including the Cochrane Crowd and the research teams at UPenn, Northeastern, and UCL, whose efforts in data collection and model development made this tool possible.
 
@@ -297,7 +299,7 @@ Additionally, I acknowledge the use of **RikaiCode (Code Repository Context Gene
 ---
 
 
-## Citation
+## 📌 Citation
 
 If you use this software in your research, please cite both RCT-Reviewer and the original RobotReviewer paper.
 
@@ -337,3 +339,5 @@ Marshall IJ, Kuiper J, Banner E, Wallace BC. “Automating Biomedical Evidence S
 ## License
 
 This project is a derivative work of [RobotReviewer](https://github.com/ijmarshall/robotreviewer) and is distributed under the GNU GENERAL PUBLIC LICENSE v3.0.
+
+[![GNU GPL v3 License](https://www.gnu.org/graphics/gplv3-with-text-136x68.png)](https://www.gnu.org/licenses/gpl-3.0.en.html)
