@@ -1,20 +1,20 @@
-
 # Author:
 #   Vihaan Sahu <pteroisvolitans12@gmail.com>
 
+# This .py file downloads models from Hugging Face hub.
 
-# This .py file downloads models from Huggung face hub. (Hugging Face Hub also uses .joblib files)
-
-
+import os
+# MUST be set before importing huggingface_hub or any ML libs
+os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "300"
+os.environ["HF_HUB_ETAG_TIMEOUT"] = "60"
 
 import sys
-import os
+import time
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import streamlit as st
 import logging
-
 
 HF_REPO_ID = "Aurumz/RCT-Reviewer"  
 MODELS_DIR = Path.home() / ".cache" / "rct_reviewer" / "models"
@@ -22,54 +22,59 @@ MODELS_DIR = Path.home() / ".cache" / "rct_reviewer" / "models"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
-
 def download_models():
     """
     Checks if models exist in the cache directory. 
-    If not, downloads them from Hugging Face Hub.
+    If not, downloads them from Hugging Face Hub with retries.
     """
-
     check_file = MODELS_DIR / "pico" / "P_model.npz"
     
     if check_file.exists():
         log.info("Models already exist in cache.")
-        return
+        return True
 
     msg = st.empty()
     msg.info("⬇️ Models not found locally. Downloading from Hugging Face Hub (One-time setup)...")
     
-    try:
-        from huggingface_hub import snapshot_download
-        
-        MODELS_DIR.mkdir(parents=True, exist_ok=True)
-        
-        snapshot_download(
-            repo_id=HF_REPO_ID,
-            repo_type="model",
-            local_dir=MODELS_DIR,
-            local_dir_use_symlinks=False
-        )
-        msg.success(f"✅ Models downloaded successfully to: {MODELS_DIR}")
-        
-    except ImportError:
-        msg.error("❌ `huggingface_hub` library not found. Please add it to requirements.txt.")
-        st.stop()
-    except Exception as e:
-        msg.error(f"❌ Failed to download models: {e}")
-        st.stop()
+    from huggingface_hub import snapshot_download
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Robust download logic with retries
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            # max_workers=1 is critical to prevent connection drops on Streamlit Cloud
+            snapshot_download(
+                repo_id=HF_REPO_ID,
+                repo_type="model",
+                local_dir=MODELS_DIR,
+                max_workers=1
+            )
+            msg.success(f"✅ Models downloaded successfully to: {MODELS_DIR}")
+            return True
+            
+        except ImportError:
+            msg.error("❌ `huggingface_hub` library not found. Please add it to requirements.txt.")
+            return False
+        except Exception as e:
+            retry_count += 1
+            if retry_count < max_retries:
+                msg.warning(f"⚠️ Download attempt {retry_count} failed: {str(e)[:100]}... Retrying in 5s...")
+                time.sleep(5)
+            else:
+                msg.error(f"❌ Failed to download models after {max_retries} attempts: {e}")
+                return False
 
-
-
+# Configure rct_reviewer to use the downloaded models
 import rct_reviewer
 rct_reviewer.DATA_ROOT = MODELS_DIR
-
 
 from rct_reviewer.config import settings
 settings.use_joblib = True 
 
-
 import fitz  
-import time
 import io
 import numpy as np
 from datetime import datetime
@@ -79,8 +84,6 @@ from rct_reviewer.core.models import DocumentAnalysis
 from rct_reviewer.ml.rct_robot import RCTRobot
 from rct_reviewer.ml.pico_robot import PICORobot
 from rct_reviewer.ml.bias_robot import BiasRobot
-
-
 
 @st.cache_resource
 def load_models():
@@ -323,8 +326,18 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # Run download check immediately
-    download_models()
+    # Lazy Load Logic: Check download status inside main
+    if "models_ready" not in st.session_state:
+        st.session_state.models_ready = False
+
+    if not st.session_state.models_ready:
+        with st.spinner("Checking / downloading models..."):
+            success = download_models()
+            if success:
+                st.session_state.models_ready = True
+            else:
+                st.error("Model download failed. Please check logs.")
+                st.stop() 
     
     st.title("RCT-Reviewer (Cloud Version)")
     st.markdown(f"""
@@ -442,8 +455,10 @@ def main():
                     try: styled_df = df.style.map(color_judgement, subset=['Judgement'])
                     except: styled_df = df.style.applymap(color_judgement, subset=['Judgement'])
                     
-                    st.dataframe(styled_df, width='stretch', hide_index=True)
+                    # FIX 1: Changed width='stretch' to use_container_width=True
+                    st.dataframe(styled_df, use_container_width=True, hide_index=True)
                     
+                    # FIX 2: Removed nested st.expander to avoid StreamlitAPIException
                     if show_evidence:
                         st.markdown("#### 📝 Evidence Sentences")
                         for b in bias:
@@ -452,13 +467,21 @@ def main():
                             hex_color = '#%02x%02x%02x' % (int(color[0]*255), int(color[1]*255), int(color[2]*255))
                             icon = "🟢" if b.get('judgement') == 'low' else "🔴"
                             
-                            with st.expander(f"{icon} {domain}"):
-                                st.markdown(f"**Color:** <span style='background-color:{hex_color};padding:2px 8px;border-radius:3px;color:{'white' if sum(color) < 1.5 else 'black'}'>{hex_color}</span>", unsafe_allow_html=True)
+                            st.markdown("---")
+                            st.markdown(f"**{icon} {domain}**")
+                            
+                            ev_col1, ev_col2 = st.columns([1, 2])
+                            with ev_col1:
                                 st.markdown(f"**Judgement:** `{b.get('judgement', 'N/A')}`")
-                                st.markdown("**Evidence:**")
-                                if b.get('text'):
-                                    for i, evidence in enumerate(b['text'][:top_k_sentences], 1): st.markdown(f"{i}. {evidence}")
-                                else: st.caption("_No evidence sentences found_")
+                            with ev_col2:
+                                st.markdown(f"**Color:** <span style='background-color:{hex_color};padding:2px 8px;border-radius:3px;color:{'white' if sum(color) < 1.5 else 'black'}'>{hex_color}</span>", unsafe_allow_html=True)
+                            
+                            st.markdown("**Evidence:**")
+                            if b.get('text'):
+                                for i, evidence in enumerate(b['text'][:top_k_sentences], 1): 
+                                    st.markdown(f"{i}. {evidence}")
+                            else: 
+                                st.caption("_No evidence sentences found_")
                 
                 st.markdown("#### 📥 Download Highlighted PDFs")
                 dl_col1, dl_col2 = st.columns(2)

@@ -2,7 +2,7 @@ Developers Guide - For running app1.py locally (pulling the model files via git 
 
 # ML GitHub Workflow (with Git LFS)
 
-Everytime yoiu download or pull the models pickle or whatever hge model files, you have to start from git lfs install, git lfs track ,  git add .gitattributes, git commit -m "Setup Git LFS tracking", git push origin master
+Everytime you download or pull the models pickle or whatever the model files, you have to start from git lfs install, git lfs track ,  git add .gitattributes, git commit -m "Setup Git LFS tracking", git push origin master
 
 
 
@@ -21,6 +21,13 @@ git lfs track "*.h5"
 git lfs track "*.hdf5"
 git lfs track "*.pickle"
 git lfs track "*.pck"
+
+
+--- below ones i am putting only
+
+git lfs track "*.npz"
+git lfs track "*.joblib"
+
 ```
 
 ### Commit LFS config
