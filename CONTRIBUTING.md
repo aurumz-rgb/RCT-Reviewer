@@ -79,4 +79,6 @@ Please try to maintain the existing project structure:
 
 ---
 
+Please make sure you do not commit model data files in pull requests!
+
 Thank you again for your contribution! ❤️

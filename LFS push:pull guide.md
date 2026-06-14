@@ -56,7 +56,7 @@ Edit:
 ## Step 2: Stage changes
 
 ```bash
-git add .
+(please do git add <specific files/ folder> instead of git add . cause that causes git to track the model files as well.)
 ```
 
 **Why:**
