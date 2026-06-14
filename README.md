@@ -1,5 +1,6 @@
 # RCT-Reviewer
 
+![banner](assets/banner1.png)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)
 ![License](https://img.shields.io/badge/license-GPL%20v3.0-blue)
@@ -277,7 +278,7 @@ python -m spacy download en_core_web_sm
 ---
 
 ## Contributing  
-<img src="assets/logo.png" width="90" align="right" />
+<img src="assets/main_logo_zoomed.png" width="110" align="right" />
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to suggest additions or changes.
 
