@@ -9,32 +9,23 @@
 ![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)
 
 
-**RCT-Reviewer** is a modernized, standalone version of the acclaimed [RobotReviewer](https://github.com/ijmarshall/robotreviewer) project.
+**RCT-Reviewer** is a modernized, standalone version of [RobotReviewer](https://github.com/ijmarshall/robotreviewer?utm_source=chatgpt.com), designed as a third-party reference tool for Risk of Bias assessment. It builds upon RobotReviewer’s original machine learning models trained on 12,808 randomized controlled trials (RCTs).
 
 
 ---
 
-## 🚀 Key Features
+## ⚛️ Why use RCT-REviewer?
 
-*   **RCT Classification**: Determines if a document is a Randomized Controlled Trial using a Linear SVM model.
-*   **PICO Extraction**: Extracts sentences regarding **P**opulation, **I**ntervention, and **O**utcomes.
-*   **Risk of Bias Assessment**: Automatically assesses risk across 6 Cochrane domains (Random sequence generation, Allocation concealment, Blinding, etc.).
-*   **Modernized Stack**: No Java, no Docker, and no external databases. Built purely in Python 3.12 using Streamlit.
-*   **PDF Annotation**: Generates downloadable PDFs with highlights for PICO and Risk of Bias evidence.
+RCT-Reviewer is designed as a **Third-Party Tiebreaker Reference** for systematic reviews. Standard guidelines require two independent human reviewers; when they disagree, this tool provides an instant, objective, and data-driven third opinion to resolve ties.
 
----
+*   **Near-Human Accuracy**: The system achieves **71.0% accuracy** for Risk of Bias judgments, performing within **<8% of human expert consensus** (which stands at 78.3%) [1].
 
-## ⚛️ Scientific Validation & Model Performance
+*   **Highly Precise Extraction**: In a randomized Cochrane user trial, the models demonstrated **87% Precision** and **90% Recall** for identifying the exact text snippets supporting the bias judgment [2].
 
-The core models integrated into RCT-Reviewer are not experimental; they are the product of rigorous academic research and have been extensively validated against human experts.
+*   **Validated Acceptance**: Real-world feasibility studies show that human reviewers accept the tool's judgments at a rate equal to that of their human peers (Risk Ratio 1.02) [3].
 
-*   **Training Scale**: The models were trained on a massive dataset of **12,808 clinical trial PDFs** algorithmically annotated using data from the Cochrane Database of Systematic Reviews (CDSR) [1].
-*   **Accuracy & Precision**:
-    *   **Risk of Bias Assessment**: The system achieves an overall accuracy of **71.0%** for Risk of Bias judgments. This performance is within **<10% of human experts** (who achieve 78.3% agreement), demonstrating near-human reliability [1].
-    *   **Specific Domains**: Using Rationale-Augmented Convolutional Neural Networks (RA-CNN), the models achieve high accuracy on specific domains: **77.4%** for Random Sequence Generation and **76.1%** for Allocation Concealment [2].
-*   **Text Extraction Quality**: In a study involving **20 blinded experienced reviewers**, the text automatically extracted by the models was rated as "highly relevant" **60.4%** of the time—statistically outperforming the manually extracted text from the CDSR (56.5%) [1].
-*   **Methodology & Authors**: Developed by Marshall, Kuiper, and Wallace, the models utilize **"distant supervision"** (using data from existing systematic reviews) to train high-quality classifiers without prohibitive manual labeling costs [3].
-*   **Testing**: The models were tested on held-out clinical trial reports by comparing predictions against independent Risk of Bias assessments from the CDSR and validated directly by human reviewers in a blinded study [1].
+*   **Rigorous Methodology**: Developed by Marshall, Kuiper, and Wallace, the models were trained on **12,808 clinical trial PDFs** using "distant supervision" to ensure high-quality classification without prohibitive manual labeling costs [1,4].
+
 
 
 ---
@@ -268,9 +259,13 @@ python -m spacy download en_core_web_sm
 
 ## References
 
-1. Marshall IJ, Kuiper J, Wallace BC. RobotReviewer: evaluation of a system for automatically assessing bias in clinical trials. Journal of the American Medical Informatics Association. 2015;23(1):193-201. [doi](http://dx.doi.org/10.1093/jamia/ocv044)
-2. Zhang Y, Marshall IJ, Wallace BC. Rationale-Augmented Convolutional Neural Networks for Text Classification. In: Proceedings of the Conference on Empirical Methods on Natural Language Processing. 2016. [preprint](https://arxiv.org/pdf/1605.04469v2.pdf)
-3. Marshall I, Kuiper J, Wallace B. Automating Risk of Bias Assessment for Clinical Trials. IEEE Journal of Biomedical and Health Informatics. 2015;19(4):1406-1412. [doi](http://dx.doi.org/10.1109/JBHI.2015.2431314)
+1. Marshall IJ, Kuiper J, Wallace BC. RobotReviewer: evaluation of a system for automatically assessing bias in clinical trials. Journal of the American Medical Informatics Association. 2016;23(1):193-201. [doi](http://dx.doi.org/10.1093/jamia/ocv044)
+
+2. Soboczenski F, et al. Machine learning to help researchers evaluate biases in clinical trials: a prospective, randomized user study. BMC Medical Informatics and Decision Making. 2019;19(1):96. [doi](http://dx.doi.org/10.1186/s12911-019-0814-z)
+
+3. Nussbaumer-Streit B, et al. Automating risk of bias assessment in systematic reviews: a real-time mixed methods comparison of human researchers to a machine learning system. BMC Medical Research Methodology. 2022;22:160. [doi](http://dx.doi.org/10.1186/s12874-022-01649-y)
+
+4. Marshall I, Kuiper J, Wallace B. Automating Risk of Bias Assessment for Clinical Trials. IEEE Journal of Biomedical and Health Informatics. 2015;19(4):1406-1412. [doi](http://dx.doi.org/10.1109/JBHI.2015.2431314)
 
 
 

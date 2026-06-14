@@ -21,10 +21,6 @@ git lfs track "*.h5"
 git lfs track "*.hdf5"
 git lfs track "*.pickle"
 git lfs track "*.pck"
-
-
---- below ones i am putting only
-
 git lfs track "*.npz"
 git lfs track "*.joblib"
 
