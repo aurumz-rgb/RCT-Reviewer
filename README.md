@@ -14,11 +14,7 @@
 
 ---
 
-<<<<<<< HEAD
-## ⚛️ Why use RCT-REviewer?
-=======
 ## ⚛️ Why use RCT-Reviewer?
->>>>>>> 4eda3c0 (Update docs and contribution guidelines)
 
 RCT-Reviewer is designed as a **Third-Party Tiebreaker Reference** for systematic reviews. Standard guidelines require two independent human reviewers; when they disagree, this tool provides an instant, objective, and data-driven third opinion to resolve ties.
 
