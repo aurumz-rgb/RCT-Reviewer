@@ -41,6 +41,10 @@ RCT-Reviewer has been independently validated against the original 2017 RobotRev
 * **Risk-of-Bias fidelity:** **100% agreement** with the original across 6,018 document × domain comparisons (κ = 1.0), including identical sentence scores and vectorizer outputs.
 * **SVM/CNN ablation:** The SVM-only pipeline achieves **92.5% decision agreement** with the original full SVM+CNN+publication-type ensemble; most of the difference is attributable to the legacy publication-type features.
 * **PDF robustness:** **1,000/1,000 PDFs** parsed successfully, with a median processing time of 1.66 seconds per PDF.
+* **External human validation (Tier E, Tian 2024, n=313 open-access trials):** concordance **60–76%** across the four RoB domains (κ 0.26/0.20/0.48/0.12) — within the range published for the original tool (κ 0.25–0.59, concordance 63–83%).
+* **Human-reference control:** on identical PMC text, the original 2017 code agrees with RCT-Reviewer on **100.0%** of domain judgements; external fidelity vs the original's deposited publisher-PDF labels: **78.9%**.
+* **Predictive validity detail:** PPV **91.1**, NPV **92.1**, Cohen's κ **0.826**, Brier score 0.067.
+* **Parser robustness detail:** **12,060 pages** parsed, success 95% CI 99.6–100.0, max 7.0 s per PDF, parse time scales linearly (Pearson r = 0.93).
 
 The complete methodology, reproducibility data, statistical results and validation outputs are available in the **[RCT-Reviewer Validation repository](https://github.com/RCT-Reviewer/Validation)**.
 
